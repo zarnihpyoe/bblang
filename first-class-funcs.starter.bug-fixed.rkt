@@ -83,8 +83,11 @@ First-class functions
     [numS (n) (numC n)]
     [plusS (l r) (plusC (desugar l)
                         (desugar r))]
-    [multS (l r) (undefined)]
-    [bminusS (l r)  (undefined)]
+    [multS (l r) (multC (desugar l)
+                        (desugar r))]
+    [bminusS (l r) (plusC (desugar l)
+                        (multC (numC -1)
+                               (desugar r)))]
     [idS (i)  (idC i)]
     [lamS (args body) (lamC args (desugar body))]
     [appS (f args)  (undefined)] 
@@ -209,9 +212,11 @@ First-class functions
   (type-case ExprC a
              [numC (n) (numV n)]
              [plusC (l r) (num+ (interp l env) (interp r env))]
-             [multC (l r) (undefined) ]
+             [multC (l r) (num* (interp l env) (interp r env))]
              [idC (i)     (undefined) ]
-             [if0C (c t e) (undefined) ]
+             [if0C (c t e)
+                   (cond [(num0? (interp c env)) (interp t env)]
+                         [else (interp e env)])]
              [lamC (params body) (undefined) ]
              [appC (f args) (apply f args env)]
              ))
@@ -237,6 +242,17 @@ First-class functions
 ;; run : s-expression -> Value
 (define (run sexp)
   (run/env sexp mt-env))
+
+
+;; basic ops tests
+(test (run '5) (numV 5))
+(test (run '(+ 2 3)) (numV 5))
+(test (run '(* 2 3)) (numV 6))
+(test (run '(- 5 3)) (numV 2))
+
+(test (run '(if0 0 1 2)) (numV 1))
+(test (run '(if0 1 1 2)) (numV 2))
+(test (run '(if0 (- (- 2 3) -1) (* 2 2) (+ 1 5))) (numV 4))
 
 
 ;; Some tests
