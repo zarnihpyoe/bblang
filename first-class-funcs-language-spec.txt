@@ -1,0 +1,85 @@
+The language for homework 2
+============================
+
+The homework language has three features beyond what is in Ch 7 of the
+text:
+
+1) Conditionals
+
+2) Multiple arguments for (first-class) functions
+
+3) Local variables, introduced via the "with" construct.  Such
+  variables might denote functions.
+
+
+
+Conditionals
+-------------
+A basic if-statement. To save the trouble of having to add a boolean
+type we just create the construct if0, which has three parts:
+
+- A test expression
+
+- A “then” expression, which is evaluated iff the test expression
+  evaluates to zero
+
+- An “else” expression, which is evaluated iff the test expression
+  evaluates to a number other than zero
+
+Evaluation should signal an error for non-numeric test values.
+
+Multi-argument functions
+-------------------------
+
+In this language, functions can accept a list of zero or more
+arguments (rather than the fixed single argument used in the text and
+lecture).
+
+All arguments to the function are to be evaluated in the same
+environment.   (That's important)
+
+Local Variables
+----------------
+The language adds a "with" construct for defining local variables. A
+with clause takes a series of bindings of identifiers to expressions
+and an expression in which to use the bindings (the body). For
+example:
+
+    (with ((x 3)
+           (y 5))
+      (+ x y))
+    
+The bindings introduced in a with are only visible in the body. In
+particular, they are not visible in the expressions bound to other
+identifiers in the same with statement. This semantics is equivalent
+to the let construct in Racket.   
+
+Use static scoping. (That's important.)
+
+Notes
+-----
+
+(i) We use the syntax "with" rather than "let" to help you avoid
+confusion between the language you are implementing and the language
+you are using to implement, ie Racket.
+
+(ii) In the same way, we use the syntax "lam" rather than "lambda" but
+your "lam"s will behave just like Racket's "lambda"s
+
+(iii) Note that, compared to the language in earlier chapters, the
+language does not have a separate category of standalone function
+definitions.  We get the same effect using "with".  For example, the
+following program defines a function named add1 and then calls it with
+5 as an argument.
+
+   (with ((add1 (fun (n) (+ n 1))))
+        (add1 5))
+  
+(iv) Be careful that you make "with" behave the same way that "let"
+behaves in Racket, NOT as "let*" behaves.  For example the following
+should be an error if written at the top-level
+
+    (with ((x 3)
+           (y x))   ;; this x is NOT the x one line above
+      (+ x y))
+    
