@@ -95,7 +95,9 @@ First-class functions
     [if0S (c t e) (if0C (desugar c)
                         (desugar t)
                         (desugar e))]
-    [withS (bindings body) (undefined)]
+    [withS (bindings body) (appC (lamC (map (lambda (b) (defS-name b)) bindings)
+                                       (desugar body))
+                                 (map (lambda (b) (desugar (defS-val b))) bindings) )]
     ))
 
 
@@ -341,13 +343,17 @@ First-class functions
 
 
 ;; testing simple with
-;; (test (parse '(with ( (x 5) ) x)) (numV 5))
+(test (run '(with ( (x 5) ) x)) (numV 5))
+(test (run '(with ( (x 5)
+                    (y 6)
+                    (f (fun (a b) (- a b))))
+                  (f x y))) (numV -1))
 
 ;; Some tests
-;;(test (run '(+ (* 5 (+ 7 3)) 4)) (numV 54))
-;;(test (run '(if0 (+ 2 2) 6 8)) (numV 8))
-;;; (test (run '(with ((f (fun (x) (* x 2)))) (f 5))) (numV 10))
-;;; (test/exn (run '(with ((x 5)) y)) "unbound")
+(test (run '(+ (* 5 (+ 7 3)) 4)) (numV 54))
+(test (run '(if0 (+ 2 2) 6 8)) (numV 8))
+(test (run '(with ((f (fun (x) (* x 2)))) (f 5))) (numV 10))
+(test/exn (run '(with ((x 5)) y)) "unbound")
 (test/exn (run '((fun (x y x) 3) 4 4 4)) "multiple")
 (test/exn (run '(3 4)) "type") 
 (test/exn (run '(if0 (fun (x) 5) 3 4)) "type")
