@@ -72,6 +72,12 @@ Top-level functions
                     (y 6)
                     (f (fun (a b) (- a b))))
                   (f x y))) (numV -1))
+;; check whether with behaves like let or let*
+(test (run '(with ([x 1])
+                  (with ([x 3]
+                         [y x])
+                        (+ x y))))
+      (numV 4))
 
 
 ;; exceptions
@@ -83,3 +89,9 @@ Top-level functions
 ;; exceptions in bindings different lengths of arrays
 (test/exn (add-bindings (list 'a 'b) (list (numV 1)) mt-env) "lengths")
 (test/exn (add-bindings (list 'a) (list (numV 1) (numV 2)) mt-env) "lengths")
+
+;; check whether with behaves like let or let*
+(test/exn (run '(with ([x 1]
+                       [y x])
+                      (+ y x)))
+          "unbound")
