@@ -172,12 +172,6 @@ First-class functions
                          (bind-val (first env))
                          (lookup id (rest env)))]))
 
-(test (lookup 'a (list (bind 'a (numV 1))))
-      (numV 1))
-(test (lookup 'a (list (bind 'b (numV 2))
-                       (bind 'a (numV 1))))
-      (numV 1))
-
 ;; error unless names and vals have the same length
 ;; add-bindings : (listof symbol  -> listof Value -> Env -> Env
 (define (add-bindings [names : (listof symbol)] [vals : (listof Value)] [env : Env]) : Env
@@ -193,8 +187,6 @@ First-class functions
       (list (bind 'b (numV 2))
             (bind 'a (numV 1))
             (bind 'c (numV 3))))
-(test/exn (add-bindings (list 'a 'b) (list (numV 1)) mt-env) "lengths")
-(test/exn (add-bindings (list 'a) (list (numV 1) (numV 2)) mt-env) "lengths")
 
 ;; operators on numVs
 ;; num+ : Value -> Value -> Value
@@ -274,86 +266,3 @@ First-class functions
 ;; run : s-expression -> Value
 (define (run sexp)
   (run/env sexp mt-env))
-
-
-;; basic ops tests
-(test (run '5) (numV 5))
-(test (run '(+ 2 3)) (numV 5))
-(test (run '(* 2 3)) (numV 6))
-(test (run '(- 5 3)) (numV 2))
-
-(test (run '(if0 0 1 2)) (numV 1))
-(test (run '(if0 1 1 2)) (numV 2))
-(test (run '(if0 (- (- 2 3) -1) (* 2 2) (+ 1 5))) (numV 4))
-
-;; testing basic functions
-(test (desugar (parse '(+ 1 2))) (plusC (numC 1) (numC 2)))
-(test (desugar (parse '(fun (x) 0))) (lamC (list 'x)
-                                           (numC 0)))
-(test (desugar (parse '(fun (x y z) (+ 5 4)))) (lamC
-                                            (list 'x 'y 'z)
-                                            (plusC (numC 5) (numC 4))))
-(test (desugar (parse '(fun (x y) (+ x y)))) (lamC
-                                            (list 'x 'y)
-                                            (plusC (idC 'x) (idC 'y))))
-(test (desugar (parse '(((fun (x)
-                  (fun (y) (+ x y))) 3) 4)))
-      (appC (appC (lamC (list 'x)
-                        (lamC (list 'y)
-                              (plusC (idC 'x) (idC 'y))))
-                  (list (numC 3)))
-            (list (numC 4))))
-
-(test (run '(fun (x) 0)) (closV (list 'x)
-                                (numC 0)
-                                mt-env))
-
-;;(test (parse '((fun (x) 0) 3)) (appS (lamS (list 'x) (numS 0))
-;;                                     (list (numS 3))))
-(test (desugar (parse '((fun (x) 0) 3))) (appC (lamC (list 'x) (numC 0))
-                                     (list (numC 3))))
-
-(test (run '((fun (x) 0) 3)) (numV 0))
-(test (run '((fun (x) (+ x 1)) 3)) (numV 4))
-(test (run '((fun (x y) (+ x y)) 3 5)) (numV 8))
-
-
-;; testing same parameter name in nested funcs
-(test (run '(((fun (y)
-                  (fun (y) (+ y y))) 3) 4) )
-      (numV 8))
-
-(test (run '(((fun (x)
-                  (fun (y) (+ x y))) 3) 5) )
-      (numV 8))
-
-(test (run '((((fun (x)
-                  (fun (y z)
-                       (fun (a) (+ a (+ (+ x y) z))))) 3) 5 4) 2) )
-      (numV 14))
-
-
-
-;; testing nested func return closV
-(test (run '((fun (x y)
-                  (fun (z) (+ x y)) ) 3 5) )
-      (closV (list 'z)
-             (plusC (idC 'x) (idC 'y))
-             (list (bind 'y (numV 5)) (bind 'x (numV 3))) ))
-
-
-;; testing simple with
-(test (run '(with ( (x 5) ) x)) (numV 5))
-(test (run '(with ( (x 5)
-                    (y 6)
-                    (f (fun (a b) (- a b))))
-                  (f x y))) (numV -1))
-
-;; Some tests
-(test (run '(+ (* 5 (+ 7 3)) 4)) (numV 54))
-(test (run '(if0 (+ 2 2) 6 8)) (numV 8))
-(test (run '(with ((f (fun (x) (* x 2)))) (f 5))) (numV 10))
-(test/exn (run '(with ((x 5)) y)) "unbound")
-(test/exn (run '((fun (x y x) 3) 4 4 4)) "multiple")
-(test/exn (run '(3 4)) "type") 
-(test/exn (run '(if0 (fun (x) 5) 3 4)) "type")
