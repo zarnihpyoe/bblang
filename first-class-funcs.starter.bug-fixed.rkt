@@ -180,8 +180,10 @@ First-class functions
 ;; add-bindings : (listof symbol  -> listof Value -> Env -> Env
 (define (add-bindings [names : (listof symbol)] [vals : (listof Value)] [env : Env]) : Env
   (cond [(empty? names) env]
-        [(cons? names) (add-bindings (rest names) (rest vals)
-                                     (extend-env (bind (first names) (first vals)) env))]))
+        [(cons? names) (if (different-length? names vals)
+                           (length-mismatch-error 'binding names vals)
+                           (add-bindings (rest names) (rest vals)
+                                         (extend-env (bind (first names) (first vals)) env)))]))
 (test (add-bindings (list 'a 'b) (list (numV 1) (numV 2)) mt-env)
       (list (bind 'b (numV 2))
             (bind 'a (numV 1))))
@@ -189,6 +191,8 @@ First-class functions
       (list (bind 'b (numV 2))
             (bind 'a (numV 1))
             (bind 'c (numV 3))))
+(test/exn (add-bindings (list 'a 'b) (list (numV 1)) mt-env) "lengths")
+(test/exn (add-bindings (list 'a) (list (numV 1) (numV 2)) mt-env) "lengths")
 
 ;; operators on numVs
 ;; num+ : Value -> Value -> Value
@@ -233,16 +237,23 @@ First-class functions
                    (cond [(num0? (interp c env)) (interp t env)]
                          [else (interp e env)])]
              [lamC (params body) (closV params body env)]
-             [appC (f args) (apply f args env)]
+             [appC (f args) (if (numC? f)
+                                (error 'interp "type error: unexpected number")
+                                (apply f args env))]
              ))
 
 ;; apply : ExprC -> (listof ExprC) -> Env -> Value
 (define (apply  [f : ExprC] [args : (listof ExprC) ] [env : Env]) : Value
   (let* ( (fv (interp f env))
-          (new-env (add-bindings (closV-params fv)
-                                 (map (lambda (arg) (interp arg env)) args)
-                                 (closV-env fv))) )
-    (interp (closV-body fv) new-env)))
+          (params (closV-params fv))
+          (body (closV-body fv))
+          (envv (closV-env fv)) )
+    (if (multiples? (closV-params fv))
+        (multiple-names-error 'apply (closV-params fv))
+        (interp body
+                (add-bindings params
+                              (map (lambda (arg) (interp arg env)) args)
+                              envv)))))
 
 
 ;; ------------------------------------------------------------------------
@@ -314,6 +325,12 @@ First-class functions
                   (fun (y) (+ x y))) 3) 5) )
       (numV 8))
 
+(test (run '((((fun (x)
+                  (fun (y z)
+                       (fun (a) (+ a (+ (+ x y) z))))) 3) 5 4) 2) )
+      (numV 14))
+
+
 
 ;; testing nested func return closV
 (test (run '((fun (x y)
@@ -323,11 +340,14 @@ First-class functions
              (list (bind 'y (numV 5)) (bind 'x (numV 3))) ))
 
 
+;; testing simple with
+;; (test (parse '(with ( (x 5) ) x)) (numV 5))
+
 ;; Some tests
 ;;(test (run '(+ (* 5 (+ 7 3)) 4)) (numV 54))
 ;;(test (run '(if0 (+ 2 2) 6 8)) (numV 8))
 ;;; (test (run '(with ((f (fun (x) (* x 2)))) (f 5))) (numV 10))
 ;;; (test/exn (run '(with ((x 5)) y)) "unbound")
-;;; (test/exn (run '((fun (x y x) 3) 4 4 4)) "multiple")
-;;; (test/exn (run '(3 4)) "type") 
-;;; (test/exn (run '(if0 (fun (x) 5) 3 4)) "type")
+(test/exn (run '((fun (x y x) 3) 4 4 4)) "multiple")
+(test/exn (run '(3 4)) "type") 
+(test/exn (run '(if0 (fun (x) 5) 3 4)) "type")
